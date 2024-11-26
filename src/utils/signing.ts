@@ -1,19 +1,28 @@
 import { encode } from '@msgpack/msgpack';
-import { ethers, getBytes, HDNodeWallet, keccak256, type Wallet } from 'ethers';
+import {
+  AbstractSigner,
+  ethers,
+  getBytes,
+  HDNodeWallet,
+  keccak256,
+  type Wallet,
+} from 'ethers';
 
 import type {
   OrderType,
   Signature,
-  OrderRequest,
   CancelOrderRequest,
   OrderWire,
+  Grouping,
+  Order,
+  Builder,
 } from '../types';
 
 const phantomDomain = {
-  name: 'Exchange',
-  version: '1',
   chainId: 1337,
+  name: 'Exchange',
   verifyingContract: '0x0000000000000000000000000000000000000000',
+  version: '1',
 };
 
 const agentTypes = {
@@ -29,9 +38,9 @@ export function orderTypeToWire(orderType: OrderType): OrderType {
   } else if (orderType.trigger) {
     return {
       trigger: {
-        triggerPx: floatToWire(Number(orderType.trigger.triggerPx)),
         isMarket: orderType.trigger.isMarket,
         tpsl: orderType.trigger.tpsl,
+        triggerPx: floatToWire(Number(orderType.trigger.triggerPx)),
       },
     };
   }
@@ -51,7 +60,7 @@ function actionHash(
   const additionalBytesLength = vaultAddress === null ? 9 : 29;
   const data = new Uint8Array(msgPackBytes.length + additionalBytesLength);
   data.set(msgPackBytes);
-  const view = new DataView(data.buffer);
+  const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
   view.setBigUint64(msgPackBytes.length, BigInt(nonce), false);
   if (vaultAddress === null) {
     view.setUint8(msgPackBytes.length + 8, 0);
@@ -91,19 +100,20 @@ export async function signUserSignedAction(
   primaryType: string,
   isMainnet: boolean
 ): Promise<Signature> {
-  action.signatureChainId = '0x66eee';
   action.hyperliquidChain = isMainnet ? 'Mainnet' : 'Testnet';
+
+  const domain = {
+    name: 'HyperliquidSignTransaction',
+    version: '1',
+    chainId: hexToNumber(action.signatureChainId),
+    verifyingContract: '0x0000000000000000000000000000000000000000',
+  } as const;
   const data = {
-    domain: {
-      name: 'HyperliquidSignTransaction',
-      version: '1',
-      chainId: 421614,
-      verifyingContract: '0x0000000000000000000000000000000000000000',
-    },
+    domain,
     types: {
       [primaryType]: payloadTypes,
     },
-    primaryType: primaryType,
+    primaryType,
     message: action,
   };
   return signInner(wallet, data);
@@ -170,12 +180,24 @@ async function signInner(
   wallet: Wallet | HDNodeWallet,
   data: any
 ): Promise<Signature> {
-  const signature = await wallet.signTypedData(
-    data.domain,
-    data.types,
-    data.message
-  );
-  return splitSig(signature);
+  if (isAbstractWalletClient(wallet)) {
+    const signature = await wallet.signTypedData({
+      domain: data.domain,
+      types: data.types,
+      primaryType: data.primaryType,
+      message: data.message,
+    });
+    return splitSig(signature);
+  } else if (isAbstractSigner(wallet)) {
+    const signature = await wallet.signTypedData(
+      data.domain,
+      data.types,
+      data.message
+    );
+    return splitSig(signature);
+  } else {
+    throw new Error('Unsupported wallet for signing typed data');
+  }
 }
 
 function splitSig(sig: string): Signature {
@@ -213,10 +235,7 @@ export function getTimestampMs(): number {
   return Date.now();
 }
 
-export function orderRequestToOrderWire(
-  order: OrderRequest,
-  asset: number
-): OrderWire {
+export function orderToWire(order: Order, asset: number): OrderWire {
   const orderWire: OrderWire = {
     a: asset,
     b: order.is_buy,
@@ -248,10 +267,55 @@ export function cancelOrderToAction(cancelRequest: CancelOrderRequest): any {
   };
 }
 
-export function orderWiresToOrderAction(orderWires: OrderWire[]): any {
+export function orderWiresToOrderAction(
+  orderWires: OrderWire[],
+  grouping: Grouping,
+  builder?: Builder
+): any {
   return {
     type: 'order',
     orders: orderWires,
-    grouping: 'na',
+    grouping: grouping,
+    ...(builder !== undefined ? { builder: builder } : {}),
   };
+}
+
+function hexToNumber(hex: Hex): number {
+  return parseInt(hex, 16);
+}
+
+interface AbstractWalletClient {
+  signTypedData(params: {
+    domain: {
+      name: string;
+      version: string;
+      chainId: number;
+      verifyingContract: Hex;
+    };
+    types: Record<string, Array<{ name: string; type: string }>>;
+    primaryType: string;
+    message: Record<string, unknown>;
+  }): Promise<Hex>;
+}
+type Hex = `0x${string}`;
+
+function isAbstractWalletClient(
+  client: unknown
+): client is AbstractWalletClient {
+  return (
+    typeof client === 'object' &&
+    client !== null &&
+    'signTypedData' in client &&
+    typeof client.signTypedData === 'function' &&
+    client.signTypedData.length === 1
+  );
+}
+function isAbstractSigner(client: unknown): client is AbstractSigner {
+  return (
+    typeof client === 'object' &&
+    client !== null &&
+    'signTypedData' in client &&
+    typeof client.signTypedData === 'function' &&
+    client.signTypedData.length === 3
+  );
 }

@@ -8,7 +8,6 @@ import { CustomOperations } from './rest/custom';
 import { ethers } from 'ethers';
 import { SymbolConversion } from './utils/symbolConversion';
 import { AuthenticationError } from './utils/errors';
-
 export class Hyperliquid {
   public info: InfoAPI;
   public exchange: ExchangeAPI;
@@ -52,7 +51,7 @@ export class Hyperliquid {
   }
 
   private createAuthenticatedProxy<T extends object>(
-    _Class: new (...args: any[]) => T
+    _: new (...args: any[]) => T
   ): T {
     return new Proxy({} as T, {
       get: (target, prop) => {
@@ -81,8 +80,7 @@ export class Hyperliquid {
         formattedPrivateKey,
         this.info,
         this.rateLimiter,
-        this.symbolConversion,
-        this.walletAddress
+        this.symbolConversion
       );
       this.custom = new CustomOperations(
         this.exchange,
@@ -118,5 +116,4 @@ export class Hyperliquid {
   }
 }
 
-export * from './types';
-export * from './utils/signing';
+export default Hyperliquid;
