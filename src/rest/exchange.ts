@@ -49,6 +49,7 @@ export class ExchangeAPI {
   }
 
   // Create a normal order
+  // Tp/sl does not work yet
   async placeOrder(orderRequest: OrderRequest): Promise<any> {
     const {
       orders,
@@ -97,7 +98,8 @@ export class ExchangeAPI {
     }
   }
 
-  // Create a TP/SL order
+  // Todo: Create a TP/SL order
+  // Right now this function does not work yet.
   async placeOrdersTpSl(orderRequest: OrderRequest): Promise<any> {
     const { orders, vaultAddress = null, builder } = orderRequest;
     const ordersArray = orders ?? [orderRequest as Order];
