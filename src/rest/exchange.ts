@@ -18,22 +18,18 @@ import type { CancelOrderRequest, Order, OrderRequest } from '../types/index';
 import { ExchangeType, ENDPOINTS } from '../types/constants';
 import { SymbolConversion } from '../utils/symbolConversion';
 
-// const IS_MAINNET = true; // Make sure this matches the IS_MAINNET in signing.ts
-
 export class ExchangeAPI {
   private wallet: ethers.Wallet;
   private httpApi: HttpApi;
   private symbolConversion: SymbolConversion;
   private IS_MAINNET = true;
-  private walletAddress: string | null;
 
   constructor(
     testnet: boolean,
     privateKey: string,
-    private info: InfoAPI,
+    _: InfoAPI,
     rateLimiter: RateLimiter,
-    symbolConversion: SymbolConversion,
-    walletAddress: string | null = null
+    symbolConversion: SymbolConversion
   ) {
     const baseURL = testnet
       ? CONSTANTS.BASE_URLS.TESTNET
@@ -42,7 +38,6 @@ export class ExchangeAPI {
     this.httpApi = new HttpApi(baseURL, ENDPOINTS.EXCHANGE, rateLimiter);
     this.wallet = new ethers.Wallet(privateKey);
     this.symbolConversion = symbolConversion;
-    this.walletAddress = walletAddress;
   }
 
   private async getAssetIndex(symbol: string): Promise<number> {
@@ -294,7 +289,7 @@ export class ExchangeAPI {
       const action = {
         type: ExchangeType.USD_SEND,
         hyperliquidChain: this.IS_MAINNET ? 'Mainnet' : 'Testnet',
-        signatureChainId: '0xa4b1',
+        signatureChainId: this.IS_MAINNET ? '0xa4b1' : '0x66eee',
         destination: destination,
         amount: amount.toString(),
         time: Date.now(),
@@ -306,11 +301,7 @@ export class ExchangeAPI {
       );
 
       const payload = { action, nonce: action.time, signature };
-      return this.httpApi.makeRequest(
-        payload,
-        1,
-        this.walletAddress || this.wallet.address
-      );
+      return this.httpApi.makeRequest(payload, 1);
     } catch (error) {
       throw error;
     }
@@ -326,7 +317,7 @@ export class ExchangeAPI {
       const action = {
         type: ExchangeType.SPOT_SEND,
         hyperliquidChain: this.IS_MAINNET ? 'Mainnet' : 'Testnet',
-        signatureChainId: '0xa4b1',
+        signatureChainId: this.IS_MAINNET ? '0xa4b1' : '0x66eee',
         destination,
         token,
         amount,
@@ -359,7 +350,7 @@ export class ExchangeAPI {
       const action = {
         type: ExchangeType.WITHDRAW,
         hyperliquidChain: this.IS_MAINNET ? 'Mainnet' : 'Testnet',
-        signatureChainId: '0xa4b1',
+        signatureChainId: this.IS_MAINNET ? '0xa4b1' : '0x66eee',
         destination: destination,
         amount: amount.toString(),
         time: Date.now(),
@@ -383,24 +374,32 @@ export class ExchangeAPI {
     toPerp: boolean
   ): Promise<any> {
     try {
-      const action = {
-        type: ExchangeType.SPOT_USER,
-        classTransfer: {
-          usdc: usdc * 1e6,
-          toPerp: toPerp,
-        },
-      };
       const nonce = Date.now();
-      const signature = await signL1Action(
+
+      const action = {
+        amount: usdc.toString(),
+        hyperliquidChain: this.IS_MAINNET ? 'Mainnet' : 'Testnet',
+        nonce,
+        signatureChainId: this.IS_MAINNET ? '0xa4b1' : '0x66eee',
+        toPerp: toPerp,
+        type: ExchangeType.USD_CLASS_TRANSFER,
+      };
+
+      const signature = await signUserSignedAction(
         this.wallet,
         action,
-        null,
-        nonce,
+        [
+          { name: 'hyperliquidChain', type: 'string' },
+          { name: 'amount', type: 'string' },
+          { name: 'toPerp', type: 'bool' },
+          { name: 'nonce', type: 'uint64' },
+        ],
+        'HyperliquidTransaction:UsdClassTransfer',
         this.IS_MAINNET
       );
-
-      const payload = { action, nonce, signature };
-      return this.httpApi.makeRequest(payload, 1);
+      const payload = { action, signature, nonce };
+      const res = await this.httpApi.makeRequest(payload, 1);
+      return res;
     } catch (error) {
       throw error;
     }

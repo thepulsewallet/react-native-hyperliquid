@@ -49,6 +49,7 @@ export enum ExchangeType {
   SPOT_USER = 'spotUser',
   VAULT_TRANSFER = 'vaultTransfer',
   SET_REFERRER = 'setReferrer',
+  USD_CLASS_TRANSFER = 'usdClassTransfer',
 }
 
 export const WEBSOCKET = {
