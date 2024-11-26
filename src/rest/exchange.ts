@@ -97,6 +97,44 @@ export class ExchangeAPI {
     }
   }
 
+  // Create a TP/SL order
+  async placeOrdersTpSl(orderRequest: OrderRequest): Promise<any> {
+    const { orders, vaultAddress = null, builder } = orderRequest;
+    const ordersArray = orders ?? [orderRequest as Order];
+    const grouping = 'positionTpsl';
+
+    try {
+      const assetIndexCache = new Map<string, number>();
+      const orderWires = await Promise.all(
+        ordersArray.map(async (o: Order) => {
+          let assetIndex = await this.getAssetIndex(o.coin);
+          if (assetIndex === undefined) {
+            assetIndex = await this.getAssetIndex(o.coin);
+            assetIndexCache.set(o.coin, assetIndex);
+          }
+          return orderToWire(o, assetIndex);
+        })
+      );
+
+      const actions = orderWiresToOrderAction(orderWires, grouping, builder);
+      const nonce = Date.now();
+      const signature = await signL1Action(
+        this.wallet,
+        actions,
+        orderRequest.vaultAddress || null,
+        nonce,
+        this.IS_MAINNET
+      );
+
+      const payload = { action: actions, nonce, signature, vaultAddress };
+
+      const res = await this.httpApi.makeRequest(payload, 1);
+      return res;
+    } catch (error) {
+      throw error;
+    }
+  }
+
   //Cancel using order id (oid)
   async cancelOrder(
     cancelRequests: CancelOrderRequest | CancelOrderRequest[]
