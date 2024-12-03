@@ -39,8 +39,8 @@ export function orderTypeToWire(orderType: OrderType): OrderType {
     return {
       trigger: {
         isMarket: orderType.trigger.isMarket,
-        tpsl: orderType.trigger.tpsl,
         triggerPx: floatToWire(Number(orderType.trigger.triggerPx)),
+        tpsl: orderType.trigger.tpsl,
       },
     };
   }

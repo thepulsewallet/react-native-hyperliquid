@@ -1,18 +1,16 @@
-// src/rest/info/general.ts
-
-import type {
-  AllMids,
-  UserOpenOrders,
-  FrontendOpenOrders,
-  UserFills,
-  UserRateLimit,
-  OrderStatus,
-  L2Book,
-  CandleSnapshot,
-} from '../../types';
 import { HttpApi } from '../../utils/helpers';
 import { SymbolConversion } from '../../utils/symbolConversion';
 import { InfoType } from '../../types/constants';
+import type {
+  AllMids,
+  CandleSnapshot,
+  FrontendOpenOrders,
+  L2Book,
+  OrderStatus,
+  UserFills,
+  UserOpenOrders,
+  UserRateLimit,
+} from '../../types';
 
 export class GeneralInfoAPI {
   private httpApi: HttpApi;
@@ -70,7 +68,7 @@ export class GeneralInfoAPI {
   async getUserFills(
     user: string,
     rawResponse: boolean = false
-  ): Promise<UserFills> {
+  ): Promise<UserFills[]> {
     const response = await this.httpApi.makeRequest(
       { type: InfoType.USER_FILLS, user: user },
       20
@@ -85,7 +83,7 @@ export class GeneralInfoAPI {
     startTime: number,
     endTime?: number,
     rawResponse: boolean = false
-  ): Promise<UserFills> {
+  ): Promise<UserFills[]> {
     let params: {
       user: string;
       startTime: number;
@@ -151,7 +149,7 @@ export class GeneralInfoAPI {
     startTime: number,
     endTime: number,
     rawResponse: boolean = false
-  ): Promise<CandleSnapshot> {
+  ): Promise<CandleSnapshot[]> {
     const response = await this.httpApi.makeRequest({
       type: InfoType.CANDLE_SNAPSHOT,
       req: {

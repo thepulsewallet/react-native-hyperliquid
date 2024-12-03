@@ -74,7 +74,7 @@ export class InfoAPI {
   async getUserFills(
     user: string,
     rawResponse: boolean = false
-  ): Promise<UserFills> {
+  ): Promise<UserFills[]> {
     return this.generalAPI.getUserFills(user, rawResponse);
   }
 
@@ -83,7 +83,7 @@ export class InfoAPI {
     startTime: number,
     endTime: number,
     rawResponse: boolean = false
-  ): Promise<UserFills> {
+  ): Promise<UserFills[]> {
     return this.generalAPI.getUserFillsByTime(
       user,
       startTime,
@@ -117,7 +117,7 @@ export class InfoAPI {
     startTime: number,
     endTime: number,
     rawResponse: boolean = false
-  ): Promise<CandleSnapshot> {
+  ): Promise<CandleSnapshot[]> {
     return this.generalAPI.getCandleSnapshot(
       coin,
       interval,
