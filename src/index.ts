@@ -44,10 +44,7 @@ export class Hyperliquid {
     this.custom = this.createAuthenticatedProxy(CustomOperations);
 
     this.walletAddress = walletAddress;
-
-    if (privateKey) {
-      this.initializeWithPrivateKey(privateKey, testnet);
-    }
+    this.initializeWithPrivateKey(privateKey ?? "", testnet);
   }
 
   private createAuthenticatedProxy<T extends object>(
