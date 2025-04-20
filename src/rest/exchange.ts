@@ -36,7 +36,7 @@ export class ExchangeAPI {
       : CONSTANTS.BASE_URLS.PRODUCTION;
     this.IS_MAINNET = !testnet;
     this.httpApi = new HttpApi(baseURL, ENDPOINTS.EXCHANGE, rateLimiter);
-    this.wallet = new ethers.Wallet(privateKey);
+    this.wallet = null
     this.symbolConversion = symbolConversion;
   }
 

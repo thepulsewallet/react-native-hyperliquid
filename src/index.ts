@@ -52,11 +52,6 @@ export class Hyperliquid {
   ): T {
     return new Proxy({} as T, {
       get: (target, prop) => {
-        if (!this.isValidPrivateKey) {
-          throw new AuthenticationError(
-            'Invalid or missing private key. This method requires authentication.'
-          );
-        }
         return target[prop as keyof T];
       },
     });

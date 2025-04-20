@@ -40,7 +40,7 @@ export class CustomOperations {
   ) {
     this.exchange = exchange;
     this.infoApi = infoApi;
-    this.wallet = new ethers.Wallet(privateKey);
+    this.wallet = null
     this.symbolConversion = symbolConversion;
     this.walletAddress = walletAddress;
   }
