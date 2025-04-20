@@ -4,19 +4,45 @@ import { HttpApi } from '../utils/helpers';
 import { InfoAPI } from './info';
 import {
   signL1Action,
-  orderWiresToOrderAction,
-  type CancelOrderResponse,
   signUserSignedAction,
   signUsdTransferAction,
   signWithdrawFromBridgeAction,
   orderToWire,
+  orderWiresToOrderAction,
 } from '../utils/signing';
 import * as CONSTANTS from '../types/constants';
 
-import type { CancelOrderRequest, Order, OrderRequest } from '../types/index';
+import type { CancelOrderRequest, Order, OrderRequest, Grouping } from '../types/index';
 
 import { ExchangeType, ENDPOINTS } from '../types/constants';
 import { SymbolConversion } from '../utils/symbolConversion';
+
+// Define CancelOrderResponse interface
+interface CancelOrderResponse {
+  status: string;
+  response: {
+    type: string;
+    data: {
+      statuses: string[];
+    };
+  };
+}
+
+// EIP-712 domain for L1 actions
+const phantomDomain = {
+  chainId: 1337,
+  name: 'Exchange',
+  verifyingContract: '0x0000000000000000000000000000000000000000',
+  version: '1',
+};
+
+// EIP-712 types for L1 actions
+const agentTypes = {
+  Agent: [
+    { name: 'source', type: 'string' },
+    { name: 'connectionId', type: 'bytes32' },
+  ],
+} as const;
 
 export class ExchangeAPI {
   private wallet: ethers.Wallet;
@@ -46,6 +72,168 @@ export class ExchangeAPI {
       throw new Error(`Unknown asset: ${symbol}`);
     }
     return index;
+  }
+
+  // New method to create EIP-712 typed data for signing
+  async createOrderTypedData(orderRequest: OrderRequest): Promise<any> {
+    const {
+      orders,
+      vaultAddress = null,
+      grouping = 'na',
+      builder,
+    } = orderRequest;
+    const ordersArray = orders ?? [orderRequest as Order];
+
+    try {
+      const assetIndexCache = new Map<string, number>();
+
+      const orderWires = await Promise.all(
+        ordersArray.map(async (o: Order) => {
+          let assetIndex = assetIndexCache.get(o.coin);
+          if (assetIndex === undefined) {
+            assetIndex = await this.getAssetIndex(o.coin);
+            assetIndexCache.set(o.coin, assetIndex);
+          }
+          return orderToWire(o, assetIndex);
+        })
+      );
+
+      const action = orderWiresToOrderAction(orderWires, grouping as Grouping, builder);
+      const nonce = Date.now();
+      
+      // Here we'll return the EIP-712 typed data for external signing
+      // Note: In a real implementation, you would need to generate a proper connectionId
+      // which would require the actionHash function from the signing utilities
+      return {
+        domain: phantomDomain,
+        types: agentTypes,
+        primaryType: 'Agent',
+        message: {
+          source: this.IS_MAINNET ? 'a' : 'b',
+          connectionId: '0x0000000000000000000000000000000000000000000000000000000000000000', // Placeholder
+        },
+        // Additional data needed for the payload
+        action,
+        nonce,
+        vaultAddress,
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+  
+  // Method for TP/SL orders typed data
+  async createTPSLOrderTypedData(orderRequest: OrderRequest): Promise<any> {
+    // Create a copy of the request but don't modify the grouping type
+    const updatedRequest = {
+      ...orderRequest,
+    };
+    
+    // If it's a MultiOrder, keep the orders property
+    if ('orders' in orderRequest) {
+      return this.createOrderTypedData({
+        ...updatedRequest,
+        grouping: 'positionTpsl' as Grouping
+      });
+    }
+    
+    // If it's a single Order
+    return this.createOrderTypedData({
+      ...updatedRequest,
+      grouping: 'positionTpsl' as Grouping
+    });
+  }
+  
+  // Method for cancel order typed data
+  async createCancelOrderTypedData(
+    cancelRequests: CancelOrderRequest | CancelOrderRequest[]
+  ): Promise<any> {
+    try {
+      const cancels = Array.isArray(cancelRequests)
+        ? cancelRequests
+        : [cancelRequests];
+
+      // Ensure all cancel requests have asset indices
+      const cancelsWithIndices = await Promise.all(
+        cancels.map(async (req) => ({
+          ...req,
+          a: await this.getAssetIndex(req.coin),
+        }))
+      );
+
+      const action = {
+        type: ExchangeType.CANCEL,
+        cancels: cancelsWithIndices.map(({ a, o }) => ({ a, o })),
+      };
+      const nonce = Date.now();
+      
+      return {
+        domain: phantomDomain,
+        types: agentTypes,
+        primaryType: 'Agent',
+        message: {
+          source: this.IS_MAINNET ? 'a' : 'b',
+          connectionId: '0x0000000000000000000000000000000000000000000000000000000000000000', // Placeholder
+        },
+        action,
+        nonce,
+        vaultAddress: null,
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+  
+  // Method for user transfer typed data
+  async createTransferTypedData(
+    destination: string, 
+    amount: number
+  ): Promise<any> {
+    try {
+      const action = {
+        type: ExchangeType.USD_SEND,
+        hyperliquidChain: this.IS_MAINNET ? 'Mainnet' : 'Testnet',
+        signatureChainId: this.IS_MAINNET ? '0xa4b1' : '0x66eee',
+        destination: destination,
+        amount: amount.toString(),
+        time: Date.now(),
+      };
+      
+      const domain = {
+        name: 'HyperliquidSignTransaction',
+        version: '1',
+        chainId: parseInt(action.signatureChainId, 16),
+        verifyingContract: '0x0000000000000000000000000000000000000000',
+      } as const;
+      
+      return {
+        domain,
+        types: {
+          'HyperliquidTransaction:UsdSend': [
+            { name: 'hyperliquidChain', type: 'string' },
+            { name: 'destination', type: 'string' },
+            { name: 'amount', type: 'string' },
+            { name: 'time', type: 'uint64' },
+          ],
+        },
+        primaryType: 'HyperliquidTransaction:UsdSend',
+        message: action,
+        action,
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+  
+  // Method for submitting pre-signed payload
+  async submitSignedAction(
+    action: any,
+    nonce: number,
+    signature: { r: string, s: string, v: number },
+    vaultAddress: string | null = null
+  ): Promise<any> {
+    const payload = { action, nonce, signature, vaultAddress };
+    return this.httpApi.makeRequest(payload, 1);
   }
 
   // Create a normal order

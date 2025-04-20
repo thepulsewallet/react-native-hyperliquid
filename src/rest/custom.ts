@@ -197,7 +197,7 @@ export class CustomOperations {
       grouping: triggers && triggers.length > 0 ? 'normalTpsl' : 'na',
     };
 
-    return this.exchange.placeOrder(orderRequest);
+    return this.exchange.createOrderTypedData(orderRequest);
   }
 
   /**

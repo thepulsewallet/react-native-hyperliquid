@@ -90,6 +90,7 @@ export async function signL1Action(
     primaryType: 'Agent',
     message: phantomAgent,
   };
+  console.log("🚀 ~ data:", data)
   return signInner(wallet, data);
 }
 
