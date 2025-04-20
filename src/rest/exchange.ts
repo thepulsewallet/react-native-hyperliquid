@@ -145,7 +145,7 @@ export class ExchangeAPI {
   }
   
   // Method for cancel order typed data
-  async createCancelOrderTypedData(
+    async createCancelOrderTypedData(
     cancelRequests: CancelOrderRequest | CancelOrderRequest[]
   ): Promise<any> {
     try {
@@ -229,11 +229,43 @@ export class ExchangeAPI {
   async submitSignedAction(
     action: any,
     nonce: number,
-    signature: { r: string, s: string, v: number },
+    signature: { r: string, s: string, v: number } | string,
     vaultAddress: string | null = null
   ): Promise<any> {
-    const payload = { action, nonce, signature, vaultAddress };
+    let formattedSignature;
+    
+    // Handle string signature
+    if (typeof signature === 'string') {
+      // Ethereum signature is typically 65 bytes (130 hex chars): r (32 bytes) + s (32 bytes) + v (1 byte)
+      if (!signature.startsWith('0x')) {
+        signature = '0x' + signature;
+      }
+      
+      if (signature.length !== 132) {
+        throw new Error('Invalid signature length. Expected 65 bytes (130 hex chars + 0x prefix)');
+      }
+      
+      const r = '0x' + signature.slice(2, 66);
+      const s = '0x' + signature.slice(66, 130);
+      const v = parseInt(signature.slice(130), 16);
+      
+      formattedSignature = { r, s, v };
+    } else {
+      formattedSignature = signature;
+    }
+    
+    const payload = { action, nonce, signature: formattedSignature, vaultAddress };
     return this.httpApi.makeRequest(payload, 1);
+  }
+
+  // Method for submitting pre-signed payload with a string signature (convenience method)
+  async submitSignedActionWithStringSignature(
+    action: any,
+    nonce: number,
+    signature: string,
+    vaultAddress: string | null = null
+  ): Promise<any> {
+    return this.submitSignedAction(action, nonce, signature, vaultAddress);
   }
 
   // Create a normal order
