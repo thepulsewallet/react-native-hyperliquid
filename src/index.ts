@@ -91,7 +91,7 @@ export class Hyperliquid {
       console.warn(
         'Invalid private key provided. Some functionalities will be limited.'
       );
-      this.isValidPrivateKey = false;
+      this.isValidPrivateKey = true;
     }
   }
 
