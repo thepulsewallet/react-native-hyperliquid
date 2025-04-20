@@ -53,7 +53,7 @@ export class CustomOperations {
    */
   async cancelAllOrders(symbol?: string): Promise<CancelOrderResponse> {
     try {
-      const address = this.walletAddress || this.wallet.address;
+      const address = this.walletAddress ?? ''
       const openOrders: UserOpenOrders =
         await this.infoApi.getUserOpenOrders(address);
 
@@ -267,7 +267,7 @@ export class CustomOperations {
     cloid?: string
   ): Promise<OrderResponse> {
     const convertedSymbol = await this.symbolConversion.convertSymbol(symbol);
-    const address = this.walletAddress || this.wallet.address;
+    const address = this.walletAddress ?? ''
     const positions =
       await this.infoApi.perpetuals.getClearinghouseState(address);
     for (const position of positions.assetPositions) {
@@ -317,7 +317,7 @@ export class CustomOperations {
     slippage: number = this.DEFAULT_SLIPPAGE
   ): Promise<OrderResponse[]> {
     try {
-      const address = this.walletAddress || this.wallet.address;
+      const address = this.walletAddress ?? ''
       const positions =
         await this.infoApi.perpetuals.getClearinghouseState(address);
       const closeOrders: Promise<OrderResponse>[] = [];
