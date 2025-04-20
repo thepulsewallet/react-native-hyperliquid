@@ -9,6 +9,8 @@ import {
   signWithdrawFromBridgeAction,
   orderToWire,
   orderWiresToOrderAction,
+  createAgentTypedData,
+  createL1ActionTypedData,
 } from '../utils/signing';
 import * as CONSTANTS from '../types/constants';
 
@@ -74,6 +76,33 @@ export class ExchangeAPI {
     return index;
   }
 
+  /**
+   * Creates typed data for approving an agent
+   * @param agentAddress The agent's address
+   * @param agentName The agent's name
+   * @returns EIP-712 typed data for external signing
+   */
+  createAgentApprovalTypedData(agentAddress: string, agentName: string): any {
+    const action = {
+      type: ExchangeType.SET_REFERRER,
+      agentAddress,
+      agentName,
+      signatureChainId: this.IS_MAINNET ? '0xa4b1' : '0x66eee',
+      nonce: Date.now(),
+    };
+
+    return createAgentTypedData(action, this.IS_MAINNET);
+  }
+
+  // Method for creating L1 action typed data using the exported function
+  createL1ActionTypedDataWithHash(
+    action: unknown,
+    vaultAddress: string | null = null,
+    nonce: number = Date.now()
+  ): any {
+    return createL1ActionTypedData(action, vaultAddress, nonce, this.IS_MAINNET);
+  }
+
   // New method to create EIP-712 typed data for signing
   async createOrderTypedData(orderRequest: OrderRequest): Promise<any> {
     const {
@@ -104,6 +133,8 @@ export class ExchangeAPI {
       // Here we'll return the EIP-712 typed data for external signing
       // Note: In a real implementation, you would need to generate a proper connectionId
       // which would require the actionHash function from the signing utilities
+
+      
       return {
         domain: phantomDomain,
         types: agentTypes,

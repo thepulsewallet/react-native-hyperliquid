@@ -177,6 +177,69 @@ export async function signAgent(
   );
 }
 
+/**
+ * Creates the EIP-712 typed data for approving an agent without signing it.
+ * This allows external signing of the agent approval message.
+ */
+export function createAgentTypedData(
+  action: any,
+  isMainnet: boolean
+): any {
+  // Set chain based on network
+  action.hyperliquidChain = isMainnet ? 'Mainnet' : 'Testnet';
+
+  const domain = {
+    name: 'HyperliquidSignTransaction',
+    version: '1',
+    chainId: hexToNumber(action.signatureChainId),
+    verifyingContract: '0x0000000000000000000000000000000000000000',
+  } as const;
+  
+  const payloadTypes = [
+    { name: 'hyperliquidChain', type: 'string' },
+    { name: 'agentAddress', type: 'address' },
+    { name: 'agentName', type: 'string' },
+    { name: 'nonce', type: 'uint64' },
+  ];
+  
+  const primaryType = 'HyperliquidTransaction:ApproveAgent';
+  
+  return {
+    domain,
+    types: {
+      [primaryType]: payloadTypes,
+    },
+    primaryType,
+    message: action,
+    action, // Including the original action for convenience
+  };
+}
+
+/**
+ * Creates the EIP-712 typed data for L1 actions without signing it.
+ * This allows external signing of action messages.
+ */
+export function createL1ActionTypedData(
+  action: unknown,
+  vaultAddress: string | null,
+  nonce: number,
+  isMainnet: boolean
+): any {
+  const hash = actionHash(action, vaultAddress, nonce);
+  const phantomAgent = constructPhantomAgent(hash, isMainnet);
+  
+  return {
+    domain: phantomDomain,
+    types: agentTypes,
+    primaryType: 'Agent',
+    message: phantomAgent,
+    action,
+    nonce,
+    vaultAddress,
+    hash, // Include the hash for reference
+  };
+}
+
 async function signInner(
   wallet: Wallet | HDNodeWallet,
   data: any
