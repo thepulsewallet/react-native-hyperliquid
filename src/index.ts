@@ -62,11 +62,7 @@ export class Hyperliquid {
     testnet: boolean = false
   ): void {
     try {
-      const formattedPrivateKey = privateKey.startsWith('0x')
-        ? privateKey
-        : (`0x${privateKey}` as `0x${string}`);
-      new ethers.Wallet(formattedPrivateKey); // Validate the private key
-
+      const formattedPrivateKey = ''
       this.exchange = new ExchangeAPI(
         testnet,
         formattedPrivateKey,
