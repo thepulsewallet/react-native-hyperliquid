@@ -264,7 +264,10 @@ async function signInner(
   }
 }
 
-function splitSig(sig: string): Signature {
+/**
+ * Converts a string signature to a Signature object with r, s, v components
+ */
+export function splitSig(sig: string): Signature {
   const { r, s, v } = ethers.Signature.from(sig);
   return { r, s, v };
 }

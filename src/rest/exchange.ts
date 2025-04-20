@@ -11,6 +11,7 @@ import {
   orderWiresToOrderAction,
   createAgentTypedData,
   createL1ActionTypedData,
+  splitSig,
 } from '../utils/signing';
 import * as CONSTANTS from '../types/constants';
 
@@ -267,20 +268,7 @@ export class ExchangeAPI {
     
     // Handle string signature
     if (typeof signature === 'string') {
-      // Ethereum signature is typically 65 bytes (130 hex chars): r (32 bytes) + s (32 bytes) + v (1 byte)
-      if (!signature.startsWith('0x')) {
-        signature = '0x' + signature;
-      }
-      
-      if (signature.length !== 132) {
-        throw new Error('Invalid signature length. Expected 65 bytes (130 hex chars + 0x prefix)');
-      }
-      
-      const r = '0x' + signature.slice(2, 66);
-      const s = '0x' + signature.slice(66, 130);
-      const v = parseInt(signature.slice(130), 16);
-      
-      formattedSignature = { r, s, v };
+      formattedSignature = splitSig(signature);
     } else {
       formattedSignature = signature;
     }
