@@ -51,7 +51,11 @@ function addressToBytes(address: string): Uint8Array {
   return getBytes(address);
 }
 
-function actionHash(
+/**
+ * Computes the hash for an action, used to generate the connectionId.
+ * This is critical for creating valid signatures for L1 actions.
+ */
+export function actionHash(
   action: unknown,
   vaultAddress: string | null,
   nonce: number
@@ -71,7 +75,10 @@ function actionHash(
   return keccak256(data);
 }
 
-function constructPhantomAgent(hash: string, isMainnet: boolean) {
+/**
+ * Constructs the phantom agent with the proper source and connectionId.
+ */
+export function constructPhantomAgent(hash: string, isMainnet: boolean) {
   return { source: isMainnet ? 'a' : 'b', connectionId: hash };
 }
 

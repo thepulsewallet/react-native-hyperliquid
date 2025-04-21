@@ -12,6 +12,8 @@ import {
   createAgentTypedData,
   createL1ActionTypedData,
   splitSig,
+  actionHash,
+  constructPhantomAgent,
 } from '../utils/signing';
 import * as CONSTANTS from '../types/constants';
 
@@ -131,19 +133,15 @@ export class ExchangeAPI {
       const action = orderWiresToOrderAction(orderWires, grouping as Grouping, builder);
       const nonce = Date.now();
       
-      // Here we'll return the EIP-712 typed data for external signing
-      // Note: In a real implementation, you would need to generate a proper connectionId
-      // which would require the actionHash function from the signing utilities
-
+      // Calculate the proper connectionId using actionHash and constructPhantomAgent
+      const hash = actionHash(action, vaultAddress, nonce);
+      const phantomAgent = constructPhantomAgent(hash, this.IS_MAINNET);
       
       return {
         domain: phantomDomain,
         types: agentTypes,
         primaryType: 'Agent',
-        message: {
-          source: this.IS_MAINNET ? 'a' : 'b',
-          connectionId: '0x0000000000000000000000000000000000000000000000000000000000000000', // Placeholder
-        },
+        message: phantomAgent,
         // Additional data needed for the payload
         action,
         nonce,
@@ -177,7 +175,7 @@ export class ExchangeAPI {
   }
   
   // Method for cancel order typed data
-    async createCancelOrderTypedData(
+  async createCancelOrderTypedData(
     cancelRequests: CancelOrderRequest | CancelOrderRequest[]
   ): Promise<any> {
     try {
@@ -199,14 +197,15 @@ export class ExchangeAPI {
       };
       const nonce = Date.now();
       
+      // Calculate the proper connectionId using actionHash and constructPhantomAgent
+      const hash = actionHash(action, null, nonce);
+      const phantomAgent = constructPhantomAgent(hash, this.IS_MAINNET);
+      
       return {
         domain: phantomDomain,
         types: agentTypes,
         primaryType: 'Agent',
-        message: {
-          source: this.IS_MAINNET ? 'a' : 'b',
-          connectionId: '0x0000000000000000000000000000000000000000000000000000000000000000', // Placeholder
-        },
+        message: phantomAgent,
         action,
         nonce,
         vaultAddress: null,
