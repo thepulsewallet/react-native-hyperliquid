@@ -1,6 +1,5 @@
 // src/rest/custom.ts
 
-import { ethers } from 'ethers';
 import { InfoAPI } from './info';
 import { ExchangeAPI } from './exchange';
 import type {
@@ -18,42 +17,24 @@ import { SymbolConversion } from '../utils/symbolConversion';
 export class CustomOperations {
   private exchange: ExchangeAPI;
   private infoApi: InfoAPI;
-  private wallet: ethers.Wallet;
   private symbolConversion: SymbolConversion;
   private walletAddress: string | null;
 
-  /**
-   * Constructor for CustomOperations class.
-   *
-   * @param exchange - The ExchangeAPI instance.
-   * @param infoApi - The InfoAPI instance.
-   * @param privateKey - The Ethereum wallet private key.
-   * @param symbolConversion - The SymbolConversion instance.
-   * @param walletAddress - The Ethereum wallet address, optional.
-   */
   constructor(
     exchange: ExchangeAPI,
     infoApi: InfoAPI,
-    privateKey: string,
     symbolConversion: SymbolConversion,
     walletAddress: string | null = null
   ) {
     this.exchange = exchange;
     this.infoApi = infoApi;
-    this.wallet = new ethers.Wallet(privateKey);
     this.symbolConversion = symbolConversion;
     this.walletAddress = walletAddress;
   }
 
-  /**
-   * Cancels all open orders for a given symbol or all symbols if no symbol is provided.
-   *
-   * @param symbol - The symbol for which to cancel orders, optional.
-   * @returns A promise that resolves to the CancelOrderResponse.
-   */
   async cancelAllOrders(symbol?: string): Promise<CancelOrderResponse> {
     try {
-      const address = this.walletAddress || this.wallet.address;
+      const address = this.walletAddress || '';
       const openOrders: UserOpenOrders =
         await this.infoApi.getUserOpenOrders(address);
 
@@ -89,26 +70,12 @@ export class CustomOperations {
     }
   }
 
-  /**
-   * Retrieves all assets available for trading.
-   *
-   * @returns A promise that resolves to an object containing arrays of perpetual and spot assets.
-   */
   async getAllAssets(): Promise<{ perp: string[]; spot: string[] }> {
     return await this.symbolConversion.getAllAssets();
   }
 
   DEFAULT_SLIPPAGE = 0.05;
 
-  /**
-   * Calculates the slippage price for a given symbol, direction, and slippage percentage.
-   *
-   * @param symbol - The trading symbol.
-   * @param isBuy - Indicates if the order is a buy or sell.
-   * @param slippage - The slippage percentage.
-   * @param px - The price, optional.
-   * @returns A promise that resolves to the slippage price.
-   */
   private async getSlippagePrice(
     symbol: string,
     isBuy: boolean,
@@ -129,17 +96,6 @@ export class CustomOperations {
     return Number(px.toFixed(isSpot ? 8 : decimals - 1));
   }
 
-  /**
-   * Places a market order for a given symbol, direction, size, and optional price.
-   *
-   * @param symbol - The trading symbol.
-   * @param isBuy - Indicates if the order is a buy or sell.
-   * @param size - The order size.
-   * @param px - The price, optional.
-   * @param triggers - Trigger orders, optional.
-   * @param slippage - The slippage percentage, default is DEFAULT_SLIPPAGE.
-   * @returns A promise that resolves to the OrderResponse.
-   */
   async marketOpen(
     symbol: string,
     isBuy: boolean,
@@ -149,6 +105,7 @@ export class CustomOperations {
     slippage: number = this.DEFAULT_SLIPPAGE
   ): Promise<OrderResponse> {
     const convertedSymbol = await this.symbolConversion.convertSymbol(symbol);
+    console.log('convertedSymbol', convertedSymbol);
     const slippagePrice = await this.getSlippagePrice(
       convertedSymbol,
       isBuy,
@@ -196,20 +153,71 @@ export class CustomOperations {
       orders: orders,
       grouping: triggers && triggers.length > 0 ? 'normalTpsl' : 'na',
     };
-
+    console.log('orderRequest', JSON.stringify(orderRequest));
     return this.exchange.placeOrder(orderRequest);
   }
 
-  /**
-   * Places a position take profit/stop loss order for a given symbol, direction, size, and optional triggers.
-   *
-   * @param symbol - The trading symbol.
-   * @param isBuy - Indicates if the order is a buy or sell.
-   * @param size - The order size.
-   * @param triggers - Trigger orders, optional.
-   * @param slippage - The slippage percentage, default is DEFAULT_SLIPPAGE.
-   * @returns A promise that resolves to the OrderResponse.
-   */
+  async getTxObjectMarketOpen(
+    symbol: string,
+    isBuy: boolean,
+    size: number,
+    px?: number,
+    triggers?: TriggerOrderTypeWire[],
+    slippage: number = this.DEFAULT_SLIPPAGE
+  ): Promise<OrderResponse> {
+    const convertedSymbol = await this.symbolConversion.convertSymbol(symbol);
+    console.log('convertedSymbol', convertedSymbol);
+    const slippagePrice = await this.getSlippagePrice(
+      convertedSymbol,
+      isBuy,
+      slippage,
+      px
+    );
+
+    const orderType: OrderType = {
+      limit: { tif: 'FrontendMarket' },
+    } as OrderType;
+
+    const orders: Order[] = [
+      {
+        coin: convertedSymbol,
+        is_buy: isBuy,
+        sz: size,
+        limit_px: slippagePrice,
+        order_type: orderType,
+        reduce_only: false,
+      },
+    ];
+
+    if (triggers) {
+      for (const trigger of triggers) {
+        const limitSlippage = await this.getSlippagePrice(
+          convertedSymbol,
+          !isBuy,
+          slippage,
+          Number(trigger.triggerPx)
+        );
+        orders.push({
+          coin: convertedSymbol,
+          is_buy: !isBuy,
+          sz: 0,
+          limit_px: limitSlippage,
+          order_type: {
+            trigger: trigger,
+          },
+          reduce_only: true,
+        });
+      }
+    }
+
+    const orderRequest: OrderRequest = {
+      orders: orders,
+      grouping: triggers && triggers.length > 0 ? 'normalTpsl' : 'na',
+    };
+    console.log('orderRequest', JSON.stringify(orderRequest));
+    return this.exchange.getTxObjectPlaceOrder(orderRequest);
+  }
+
   async makePositionTpSl(
     symbol: string,
     isBuy: boolean,
@@ -249,16 +257,6 @@ export class CustomOperations {
     return this.exchange.placeOrdersTpSl(orderRequest);
   }
 
-  /**
-   * Places a market close order for a given symbol, optional size, optional price, and slippage percentage.
-   *
-   * @param symbol - The trading symbol.
-   * @param size - The order size, optional.
-   * @param px - The price, optional.
-   * @param slippage - The slippage percentage, default is DEFAULT_SLIPPAGE.
-   * @param cloid - The client order ID, optional.
-   * @returns A promise that resolves to the OrderResponse.
-   */
   async marketClose(
     symbol: string,
     size?: number,
@@ -267,7 +265,7 @@ export class CustomOperations {
     cloid?: string
   ): Promise<OrderResponse> {
     const convertedSymbol = await this.symbolConversion.convertSymbol(symbol);
-    const address = this.walletAddress || this.wallet.address;
+    const address = this.walletAddress || '';
     const positions =
       await this.infoApi.perpetuals.getClearinghouseState(address);
     for (const position of positions.assetPositions) {
@@ -307,17 +305,11 @@ export class CustomOperations {
     throw new Error(`No position found for ${convertedSymbol}`);
   }
 
-  /**
-   * Closes all open positions for all symbols.
-   *
-   * @param slippage - The slippage percentage, default is DEFAULT_SLIPPAGE.
-   * @returns A promise that resolves to an array of OrderResponse.
-   */
   async closeAllPositions(
     slippage: number = this.DEFAULT_SLIPPAGE
   ): Promise<OrderResponse[]> {
     try {
-      const address = this.walletAddress || this.wallet.address;
+      const address = this.walletAddress || '';
       const positions =
         await this.infoApi.perpetuals.getClearinghouseState(address);
       const closeOrders: Promise<OrderResponse>[] = [];
@@ -341,17 +333,6 @@ export class CustomOperations {
     }
   }
 
-  /**
-   * Places a limit order for a given symbol, direction, size, price, and optional triggers.
-   *
-   * @param symbol - The trading symbol.
-   * @param isBuy - Indicates if the order is a buy or sell.
-   * @param size - The order size.
-   * @param px - The price.
-   * @param triggers - Trigger orders, optional.
-   * @param slippage - The slippage percentage, default is DEFAULT_SLIPPAGE.
-   * @returns A promise that resolves to the OrderResponse.
-   */
   async limitOpen(
     symbol: string,
     isBuy: boolean,

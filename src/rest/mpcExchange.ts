@@ -1,4 +1,3 @@
-import { ethers } from 'ethers';
 import { RateLimiter } from '../utils/rateLimiter';
 import { HttpApi } from '../utils/helpers';
 import { InfoAPI } from './info';
@@ -19,15 +18,13 @@ import type { CancelOrderRequest, Order, OrderRequest } from '../types/index';
 import { ExchangeType, ENDPOINTS } from '../types/constants';
 import { SymbolConversion } from '../utils/symbolConversion';
 
-export class ExchangeAPI {
-  private wallet: ethers.Wallet | undefined;
+export class MpcExchange {
   private httpApi: HttpApi;
   private symbolConversion: SymbolConversion;
   private IS_MAINNET = true;
 
   constructor(
     testnet: boolean,
-    privateKey: string,
     _: InfoAPI,
     rateLimiter: RateLimiter,
     symbolConversion: SymbolConversion
@@ -37,7 +34,6 @@ export class ExchangeAPI {
       : CONSTANTS.BASE_URLS.PRODUCTION;
     this.IS_MAINNET = !testnet;
     this.httpApi = new HttpApi(baseURL, ENDPOINTS.EXCHANGE, rateLimiter);
-    this.wallet = privateKey ? new ethers.Wallet(privateKey) : undefined;
     this.symbolConversion = symbolConversion;
   }
 

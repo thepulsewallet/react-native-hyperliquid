@@ -76,7 +76,7 @@ function constructPhantomAgent(hash: string, isMainnet: boolean) {
 }
 
 export async function signL1Action(
-  wallet: Wallet | HDNodeWallet,
+  wallet: Wallet | HDNodeWallet | undefined,
   action: unknown,
   activePool: string | null,
   nonce: number,
@@ -90,11 +90,28 @@ export async function signL1Action(
     primaryType: 'Agent',
     message: phantomAgent,
   };
+  console.log('signL1Action', JSON.stringify(data, null, 2));
   return signInner(wallet, data);
 }
 
+export async function getTxObject(
+  action: unknown,
+  activePool: string | null,
+  nonce: number,
+  isMainnet: boolean
+) {
+  const hash = actionHash(action, activePool, nonce);
+  const phantomAgent = constructPhantomAgent(hash, isMainnet);
+  return {
+    domain: phantomDomain,
+    types: agentTypes,
+    primaryType: 'Agent',
+    message: phantomAgent,
+  };
+}
+
 export async function signUserSignedAction(
-  wallet: Wallet,
+  wallet: Wallet | undefined,
   action: any,
   payloadTypes: Array<{ name: string; type: string }>,
   primaryType: string,
@@ -120,7 +137,7 @@ export async function signUserSignedAction(
 }
 
 export async function signUsdTransferAction(
-  wallet: Wallet,
+  wallet: Wallet | undefined,
   action: any,
   isMainnet: boolean
 ): Promise<Signature> {
@@ -139,7 +156,7 @@ export async function signUsdTransferAction(
 }
 
 export async function signWithdrawFromBridgeAction(
-  wallet: Wallet,
+  wallet: Wallet | undefined,
   action: any,
   isMainnet: boolean
 ): Promise<Signature> {
@@ -177,7 +194,7 @@ export async function signAgent(
 }
 
 async function signInner(
-  wallet: Wallet | HDNodeWallet,
+  wallet: Wallet | HDNodeWallet | undefined,
   data: any
 ): Promise<Signature> {
   if (isAbstractWalletClient(wallet)) {
@@ -297,6 +314,7 @@ interface AbstractWalletClient {
     message: Record<string, unknown>;
   }): Promise<Hex>;
 }
+
 type Hex = `0x${string}`;
 
 function isAbstractWalletClient(
@@ -310,6 +328,7 @@ function isAbstractWalletClient(
     client.signTypedData.length === 1
   );
 }
+
 function isAbstractSigner(client: unknown): client is AbstractSigner {
   return (
     typeof client === 'object' &&

@@ -1,5 +1,5 @@
 {
-  "name": "react-native-hyperliquid",
+  "name": "@thepulsewallet/react-native-hyperliquid",
   "version": "1.1.4",
   "description": "React Native HyperLiquid",
   "source": "./src/index.ts",

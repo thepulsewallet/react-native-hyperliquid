@@ -8,6 +8,7 @@ import { CustomOperations } from './rest/custom';
 import { ethers } from 'ethers';
 import { SymbolConversion } from './utils/symbolConversion';
 import { AuthenticationError } from './utils/errors';
+
 export class Hyperliquid {
   public info: InfoAPI;
   public exchange: ExchangeAPI;
@@ -85,7 +86,6 @@ export class Hyperliquid {
       this.custom = new CustomOperations(
         this.exchange,
         this.info,
-        formattedPrivateKey,
         this.symbolConversion,
         this.walletAddress
       );
