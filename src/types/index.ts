@@ -1,3 +1,5 @@
+import type { TypedDataDomain, TypedDataField } from 'ethers';
+
 export type Tif = 'Alo' | 'Ioc' | 'Gtc' | 'FrontendMarket';
 export type Tpsl = 'tp' | 'sl';
 export type LimitOrderType = {
@@ -546,4 +548,11 @@ export interface Leverage {
 export interface WsActiveAssetCtx {
   coin: string;
   ctx: AssetCtx;
+}
+
+export interface ITypeData {
+  domain: TypedDataDomain;
+  types: Record<string, Array<TypedDataField>>;
+  message: Record<string, any>;
+  primaryType: string;
 }

@@ -27,7 +27,7 @@ export class ExchangeAPI {
 
   constructor(
     testnet: boolean,
-    privateKey: string,
+    privateKey: string | null,
     _: InfoAPI,
     rateLimiter: RateLimiter,
     symbolConversion: SymbolConversion

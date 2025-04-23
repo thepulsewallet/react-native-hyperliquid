@@ -2,15 +2,13 @@ import { RateLimiter } from '../utils/rateLimiter';
 import { HttpApi } from '../utils/helpers';
 import { InfoAPI } from './info';
 import {
-  signL1Action,
   orderWiresToOrderAction,
-  type CancelOrderResponse,
   signUserSignedAction,
   signUsdTransferAction,
   signWithdrawFromBridgeAction,
   orderToWire,
   getTxObject,
-} from '../utils/signing';
+} from '../utils/mpcSigning';
 import * as CONSTANTS from '../types/constants';
 
 import type { CancelOrderRequest, Order, OrderRequest } from '../types/index';
@@ -71,54 +69,6 @@ export class MpcExchange {
 
       const actions = orderWiresToOrderAction(orderWires, grouping, builder);
       const nonce = Date.now();
-      const signature = await signL1Action(
-        this.wallet,
-        actions,
-        vaultAddress,
-        nonce,
-        this.IS_MAINNET
-      );
-
-      const payload = {
-        action: actions,
-        isFrontend: true,
-        nonce,
-        signature,
-        vaultAddress,
-      };
-
-      const res = await this.httpApi.makeRequest(payload, 1);
-      return res;
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  async getTxObjectPlaceOrder(orderRequest: OrderRequest): Promise<any> {
-    const {
-      orders,
-      vaultAddress = null,
-      grouping = 'na',
-      builder,
-    } = orderRequest;
-    const ordersArray = orders ?? [orderRequest as Order];
-
-    try {
-      const assetIndexCache = new Map<string, number>();
-
-      const orderWires = await Promise.all(
-        ordersArray.map(async (o: Order) => {
-          let assetIndex = assetIndexCache.get(o.coin);
-          if (assetIndex === undefined) {
-            assetIndex = await this.getAssetIndex(o.coin);
-            assetIndexCache.set(o.coin, assetIndex);
-          }
-          return orderToWire(o, assetIndex);
-        })
-      );
-
-      const actions = orderWiresToOrderAction(orderWires, grouping, builder);
-      const nonce = Date.now();
       const signature = await getTxObject(
         actions,
         vaultAddress,
@@ -142,7 +92,6 @@ export class MpcExchange {
     const { orders, vaultAddress = null, builder } = orderRequest;
     const ordersArray = orders ?? [orderRequest as Order];
     const grouping = 'positionTpsl';
-
     try {
       const assetIndexCache = new Map<string, number>();
       const orderWires = await Promise.all(
@@ -155,21 +104,15 @@ export class MpcExchange {
           return orderToWire(o, assetIndex);
         })
       );
-
       const actions = orderWiresToOrderAction(orderWires, grouping, builder);
       const nonce = Date.now();
-      const signature = await signL1Action(
-        this.wallet,
+      const signature = await getTxObject(
         actions,
         orderRequest.vaultAddress || null,
         nonce,
         this.IS_MAINNET
       );
-
-      const payload = { action: actions, nonce, signature, vaultAddress };
-
-      const res = await this.httpApi.makeRequest(payload, 1);
-      return res;
+      return { action: actions, nonce, signature, vaultAddress };
     } catch (error) {
       throw error;
     }
@@ -178,7 +121,7 @@ export class MpcExchange {
   //Cancel using order id (oid)
   async cancelOrder(
     cancelRequests: CancelOrderRequest | CancelOrderRequest[]
-  ): Promise<CancelOrderResponse> {
+  ): Promise<any> {
     try {
       const cancels = Array.isArray(cancelRequests)
         ? cancelRequests
@@ -198,16 +141,8 @@ export class MpcExchange {
       };
 
       const nonce = Date.now();
-      const signature = await signL1Action(
-        this.wallet,
-        action,
-        null,
-        nonce,
-        this.IS_MAINNET
-      );
-
-      const payload = { action, nonce, signature };
-      return this.httpApi.makeRequest(payload, 1);
+      const signature = await getTxObject(action, null, nonce, this.IS_MAINNET);
+      return { action, nonce, signature };
     } catch (error) {
       throw error;
     }
@@ -222,16 +157,8 @@ export class MpcExchange {
         cancels: [{ asset: assetIndex, cloid }],
       };
       const nonce = Date.now();
-      const signature = await signL1Action(
-        this.wallet,
-        action,
-        null,
-        nonce,
-        this.IS_MAINNET
-      );
-
-      const payload = { action, nonce, signature };
-      return this.httpApi.makeRequest(payload, 1);
+      const signature = await getTxObject(action, null, nonce, this.IS_MAINNET);
+      return { action, nonce, signature };
     } catch (error) {
       throw error;
     }
@@ -249,16 +176,8 @@ export class MpcExchange {
         order: orderWire,
       };
       const nonce = Date.now();
-      const signature = await signL1Action(
-        this.wallet,
-        action,
-        null,
-        nonce,
-        this.IS_MAINNET
-      );
-
-      const payload = { action, nonce, signature };
-      return this.httpApi.makeRequest(payload, 1);
+      const signature = await getTxObject(action, null, nonce, this.IS_MAINNET);
+      return { action, nonce, signature };
     } catch (error) {
       throw error;
     }
@@ -286,16 +205,8 @@ export class MpcExchange {
       };
 
       const nonce = Date.now();
-      const signature = await signL1Action(
-        this.wallet,
-        action,
-        null,
-        nonce,
-        this.IS_MAINNET
-      );
-
-      const payload = { action, nonce, signature };
-      return this.httpApi.makeRequest(payload, 1);
+      const signature = await getTxObject(action, null, nonce, this.IS_MAINNET);
+      return { action, nonce, signature };
     } catch (error) {
       throw error;
     }
@@ -316,16 +227,9 @@ export class MpcExchange {
         leverage: leverage,
       };
       const nonce = Date.now();
-      const signature = await signL1Action(
-        this.wallet,
-        action,
-        null,
-        nonce,
-        this.IS_MAINNET
-      );
+      const signature = await getTxObject(action, null, nonce, this.IS_MAINNET);
 
-      const payload = { action, nonce, signature };
-      return this.httpApi.makeRequest(payload, 1);
+      return { action, nonce, signature };
     } catch (error) {
       throw error;
     }
@@ -346,16 +250,9 @@ export class MpcExchange {
         ntli,
       };
       const nonce = Date.now();
-      const signature = await signL1Action(
-        this.wallet,
-        action,
-        null,
-        nonce,
-        this.IS_MAINNET
-      );
+      const signature = await getTxObject(action, null, nonce, this.IS_MAINNET);
 
-      const payload = { action, nonce, signature };
-      return this.httpApi.makeRequest(payload, 1);
+      return { action, nonce, signature };
     } catch (error) {
       throw error;
     }
@@ -372,14 +269,9 @@ export class MpcExchange {
         amount: amount.toString(),
         time: Date.now(),
       };
-      const signature = await signUsdTransferAction(
-        this.wallet,
-        action,
-        this.IS_MAINNET
-      );
+      const signature = await signUsdTransferAction(action, this.IS_MAINNET);
 
-      const payload = { action, nonce: action.time, signature };
-      return this.httpApi.makeRequest(payload, 1);
+      return { action, nonce: action.time, signature };
     } catch (error) {
       throw error;
     }
@@ -402,7 +294,6 @@ export class MpcExchange {
         time: Date.now(),
       };
       const signature = await signUserSignedAction(
-        this.wallet,
         action,
         [
           { name: 'hyperliquidChain', type: 'string' },
@@ -415,8 +306,7 @@ export class MpcExchange {
         this.IS_MAINNET
       );
 
-      const payload = { action, nonce: action.time, signature };
-      return this.httpApi.makeRequest(payload, 1);
+      return { action, nonce: action.time, signature };
     } catch (error) {
       throw error;
     }
@@ -434,13 +324,11 @@ export class MpcExchange {
         time: Date.now(),
       };
       const signature = await signWithdrawFromBridgeAction(
-        this.wallet,
         action,
         this.IS_MAINNET
       );
 
-      const payload = { action, nonce: action.time, signature };
-      return this.httpApi.makeRequest(payload, 1);
+      return { action, nonce: action.time, signature };
     } catch (error) {
       throw error;
     }
@@ -464,7 +352,6 @@ export class MpcExchange {
       };
 
       const signature = await signUserSignedAction(
-        this.wallet,
         action,
         [
           { name: 'hyperliquidChain', type: 'string' },
@@ -475,9 +362,7 @@ export class MpcExchange {
         'HyperliquidTransaction:UsdClassTransfer',
         this.IS_MAINNET
       );
-      const payload = { action, signature, nonce };
-      const res = await this.httpApi.makeRequest(payload, 1);
-      return res;
+      return { action, signature, nonce };
     } catch (error) {
       throw error;
     }
@@ -488,16 +373,8 @@ export class MpcExchange {
     try {
       const action = { type: ExchangeType.SCHEDULE_CANCEL, time };
       const nonce = Date.now();
-      const signature = await signL1Action(
-        this.wallet,
-        action,
-        null,
-        nonce,
-        this.IS_MAINNET
-      );
-
-      const payload = { action, nonce, signature };
-      return this.httpApi.makeRequest(payload, 1);
+      const signature = await getTxObject(action, null, nonce, this.IS_MAINNET);
+      return { action, nonce, signature };
     } catch (error) {
       throw error;
     }
@@ -517,16 +394,9 @@ export class MpcExchange {
         usd,
       };
       const nonce = Date.now();
-      const signature = await signL1Action(
-        this.wallet,
-        action,
-        null,
-        nonce,
-        this.IS_MAINNET
-      );
+      const signature = await getTxObject(action, null, nonce, this.IS_MAINNET);
 
-      const payload = { action, nonce, signature };
-      return this.httpApi.makeRequest(payload, 1);
+      return { action, nonce, signature };
     } catch (error) {
       throw error;
     }
@@ -539,16 +409,8 @@ export class MpcExchange {
         code,
       };
       const nonce = Date.now();
-      const signature = await signL1Action(
-        this.wallet,
-        action,
-        null,
-        nonce,
-        this.IS_MAINNET
-      );
-
-      const payload = { action, nonce, signature };
-      return this.httpApi.makeRequest(payload, 1);
+      const signature = await getTxObject(action, null, nonce, this.IS_MAINNET);
+      return { action, nonce, signature };
     } catch (error) {
       throw error;
     }

@@ -8,10 +8,12 @@ import { CustomOperations } from './rest/custom';
 import { ethers } from 'ethers';
 import { SymbolConversion } from './utils/symbolConversion';
 import { AuthenticationError } from './utils/errors';
+import { MpcExchange } from './rest/mpcExchange';
 
 export class Hyperliquid {
   public info: InfoAPI;
   public exchange: ExchangeAPI;
+  public mpcExchange: MpcExchange | undefined;
   public ws: WebSocketClient;
   public subscriptions: WebSocketSubscriptions;
   public custom: CustomOperations;
@@ -20,12 +22,15 @@ export class Hyperliquid {
   private symbolConversion: SymbolConversion;
   private isValidPrivateKey: boolean = false;
   private walletAddress: string | null = null;
+  private isSocialAccount: boolean = false;
 
   constructor(
     privateKey: string | null = null,
     testnet: boolean = false,
-    walletAddress: string | null = null
+    walletAddress: string | null = null,
+    isSocialAccount: boolean = false
   ) {
+    console.log('Hyperliquid client initialized');
     const baseURL = testnet
       ? CONSTANTS.BASE_URLS.TESTNET
       : CONSTANTS.BASE_URLS.PRODUCTION;
@@ -41,13 +46,49 @@ export class Hyperliquid {
     );
 
     // Create proxy objects for exchange and custom
-    this.exchange = this.createAuthenticatedProxy(ExchangeAPI);
-    this.custom = this.createAuthenticatedProxy(CustomOperations);
-
+    this.isSocialAccount = isSocialAccount;
+    this.mpcExchange = new MpcExchange(
+      testnet,
+      this.info,
+      this.rateLimiter,
+      this.symbolConversion
+    );
+    if (!this.isSocialAccount) {
+      this.exchange = this.createAuthenticatedProxy(ExchangeAPI);
+      this.custom = this.createAuthenticatedProxy(CustomOperations);
+    } else {
+      this.exchange = new ExchangeAPI(
+        testnet,
+        privateKey,
+        this.info,
+        this.rateLimiter,
+        this.symbolConversion
+      );
+      this.custom = new CustomOperations(
+        this.exchange,
+        this.info,
+        this.symbolConversion,
+        walletAddress
+      );
+    }
     this.walletAddress = walletAddress;
 
     if (privateKey) {
       this.initializeWithPrivateKey(privateKey, testnet);
+    } else {
+      this.exchange = new ExchangeAPI(
+        testnet,
+        privateKey,
+        this.info,
+        this.rateLimiter,
+        this.symbolConversion
+      );
+      this.custom = new CustomOperations(
+        this.exchange,
+        this.info,
+        this.symbolConversion,
+        walletAddress
+      );
     }
   }
 

@@ -19,11 +19,11 @@ export declare class InfoAPI {
     getAllMids(rawResponse?: boolean): Promise<AllMids>;
     getUserOpenOrders(user: string, rawResponse?: boolean): Promise<UserOpenOrders>;
     getFrontendOpenOrders(user: string, rawResponse?: boolean): Promise<FrontendOpenOrders>;
-    getUserFills(user: string, rawResponse?: boolean): Promise<UserFills>;
-    getUserFillsByTime(user: string, startTime: number, endTime: number, rawResponse?: boolean): Promise<UserFills>;
+    getUserFills(user: string, rawResponse?: boolean): Promise<UserFills[]>;
+    getUserFillsByTime(user: string, startTime: number, endTime: number, rawResponse?: boolean): Promise<UserFills[]>;
     getUserRateLimit(user: string, rawResponse?: boolean): Promise<UserRateLimit>;
     getOrderStatus(user: string, oid: number | string, rawResponse?: boolean): Promise<OrderStatus>;
     getL2Book(coin: string, rawResponse?: boolean): Promise<L2Book>;
-    getCandleSnapshot(coin: string, interval: string, startTime: number, endTime: number, rawResponse?: boolean): Promise<CandleSnapshot>;
+    getCandleSnapshot(coin: string, interval: string, startTime: number, endTime: number, rawResponse?: boolean): Promise<CandleSnapshot[]>;
 }
 //# sourceMappingURL=info.d.ts.map

@@ -1,21 +1,14 @@
 import { encode } from '@msgpack/msgpack';
-import {
-  AbstractSigner,
-  ethers,
-  getBytes,
-  HDNodeWallet,
-  keccak256,
-  type Wallet,
-} from 'ethers';
+import { getBytes, keccak256 } from 'ethers';
 
 import type {
   OrderType,
-  Signature,
   CancelOrderRequest,
   OrderWire,
   Grouping,
   Order,
   Builder,
+  ITypeData,
 } from '../types';
 
 const phantomDomain = {
@@ -75,25 +68,6 @@ function constructPhantomAgent(hash: string, isMainnet: boolean) {
   return { source: isMainnet ? 'a' : 'b', connectionId: hash };
 }
 
-export async function signL1Action(
-  wallet: Wallet | HDNodeWallet | undefined,
-  action: unknown,
-  activePool: string | null,
-  nonce: number,
-  isMainnet: boolean
-): Promise<Signature> {
-  const hash = actionHash(action, activePool, nonce);
-  const phantomAgent = constructPhantomAgent(hash, isMainnet);
-  const data = {
-    domain: phantomDomain,
-    types: agentTypes,
-    primaryType: 'Agent',
-    message: phantomAgent,
-  };
-  console.log('signL1Action', JSON.stringify(data, null, 2));
-  return signInner(wallet, data);
-}
-
 export async function getTxObject(
   action: unknown,
   activePool: string | null,
@@ -111,12 +85,11 @@ export async function getTxObject(
 }
 
 export async function signUserSignedAction(
-  wallet: Wallet | undefined,
   action: any,
   payloadTypes: Array<{ name: string; type: string }>,
   primaryType: string,
   isMainnet: boolean
-): Promise<Signature> {
+): Promise<ITypeData> {
   action.hyperliquidChain = isMainnet ? 'Mainnet' : 'Testnet';
 
   const domain = {
@@ -125,7 +98,7 @@ export async function signUserSignedAction(
     chainId: hexToNumber(action.signatureChainId),
     verifyingContract: '0x0000000000000000000000000000000000000000',
   } as const;
-  const data = {
+  return {
     domain,
     types: {
       [primaryType]: payloadTypes,
@@ -133,16 +106,13 @@ export async function signUserSignedAction(
     primaryType,
     message: action,
   };
-  return signInner(wallet, data);
 }
 
 export async function signUsdTransferAction(
-  wallet: Wallet | undefined,
   action: any,
   isMainnet: boolean
-): Promise<Signature> {
+): Promise<ITypeData> {
   return signUserSignedAction(
-    wallet,
     action,
     [
       { name: 'hyperliquidChain', type: 'string' },
@@ -156,12 +126,10 @@ export async function signUsdTransferAction(
 }
 
 export async function signWithdrawFromBridgeAction(
-  wallet: Wallet | undefined,
   action: any,
   isMainnet: boolean
-): Promise<Signature> {
+): Promise<ITypeData> {
   return signUserSignedAction(
-    wallet,
     action,
     [
       { name: 'hyperliquidChain', type: 'string' },
@@ -175,12 +143,10 @@ export async function signWithdrawFromBridgeAction(
 }
 
 export async function signAgent(
-  wallet: Wallet,
   action: any,
   isMainnet: boolean
-): Promise<Signature> {
+): Promise<ITypeData> {
   return signUserSignedAction(
-    wallet,
     action,
     [
       { name: 'hyperliquidChain', type: 'string' },
@@ -191,35 +157,6 @@ export async function signAgent(
     'HyperliquidTransaction:ApproveAgent',
     isMainnet
   );
-}
-
-async function signInner(
-  wallet: Wallet | HDNodeWallet | undefined,
-  data: any
-): Promise<Signature> {
-  if (isAbstractWalletClient(wallet)) {
-    const signature = await wallet.signTypedData({
-      domain: data.domain,
-      types: data.types,
-      primaryType: data.primaryType,
-      message: data.message,
-    });
-    return splitSig(signature);
-  } else if (isAbstractSigner(wallet)) {
-    const signature = await wallet.signTypedData(
-      data.domain,
-      data.types,
-      data.message
-    );
-    return splitSig(signature);
-  } else {
-    throw new Error('Unsupported wallet for signing typed data');
-  }
-}
-
-function splitSig(sig: string): Signature {
-  const { r, s, v } = ethers.Signature.from(sig);
-  return { r, s, v };
 }
 
 export function floatToWire(x: number): string {
@@ -301,40 +238,4 @@ function hexToNumber(hex: Hex): number {
   return parseInt(hex, 16);
 }
 
-interface AbstractWalletClient {
-  signTypedData(params: {
-    domain: {
-      name: string;
-      version: string;
-      chainId: number;
-      verifyingContract: Hex;
-    };
-    types: Record<string, Array<{ name: string; type: string }>>;
-    primaryType: string;
-    message: Record<string, unknown>;
-  }): Promise<Hex>;
-}
-
 type Hex = `0x${string}`;
-
-function isAbstractWalletClient(
-  client: unknown
-): client is AbstractWalletClient {
-  return (
-    typeof client === 'object' &&
-    client !== null &&
-    'signTypedData' in client &&
-    typeof client.signTypedData === 'function' &&
-    client.signTypedData.length === 1
-  );
-}
-
-function isAbstractSigner(client: unknown): client is AbstractSigner {
-  return (
-    typeof client === 'object' &&
-    client !== null &&
-    'signTypedData' in client &&
-    typeof client.signTypedData === 'function' &&
-    client.signTypedData.length === 3
-  );
-}
