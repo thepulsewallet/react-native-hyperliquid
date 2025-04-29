@@ -9,6 +9,7 @@ import { ethers } from 'ethers';
 import { SymbolConversion } from './utils/symbolConversion';
 import { AuthenticationError } from './utils/errors';
 import { MpcExchange } from './rest/mpcExchange';
+import { MpcCustomOperations } from './rest/mpcCustom';
 
 export class Hyperliquid {
   public info: InfoAPI;
@@ -17,6 +18,7 @@ export class Hyperliquid {
   public ws: WebSocketClient;
   public subscriptions: WebSocketSubscriptions;
   public custom: CustomOperations;
+  public mpcCustom: MpcCustomOperations | undefined;
 
   private rateLimiter: RateLimiter;
   private symbolConversion: SymbolConversion;
@@ -30,7 +32,6 @@ export class Hyperliquid {
     walletAddress: string | null = null,
     isSocialAccount: boolean = false
   ) {
-    console.log('Hyperliquid client initialized');
     const baseURL = testnet
       ? CONSTANTS.BASE_URLS.TESTNET
       : CONSTANTS.BASE_URLS.PRODUCTION;
@@ -52,6 +53,12 @@ export class Hyperliquid {
       this.info,
       this.rateLimiter,
       this.symbolConversion
+    );
+    this.mpcCustom = new MpcCustomOperations(
+      this.mpcExchange,
+      this.info,
+      this.symbolConversion,
+      walletAddress ? walletAddress : ''
     );
     if (!this.isSocialAccount) {
       this.exchange = this.createAuthenticatedProxy(ExchangeAPI);
@@ -115,6 +122,7 @@ export class Hyperliquid {
       const formattedPrivateKey = privateKey.startsWith('0x')
         ? privateKey
         : (`0x${privateKey}` as `0x${string}`);
+      // eslint-disable-next-line no-new
       new ethers.Wallet(formattedPrivateKey); // Validate the private key
 
       this.exchange = new ExchangeAPI(

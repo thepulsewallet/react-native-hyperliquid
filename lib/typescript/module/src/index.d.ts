@@ -4,6 +4,7 @@ import { WebSocketClient } from './websocket/connection';
 import { WebSocketSubscriptions } from './websocket/subscriptions';
 import { CustomOperations } from './rest/custom';
 import { MpcExchange } from './rest/mpcExchange';
+import { MpcCustomOperations } from './rest/mpcCustom';
 export declare class Hyperliquid {
     info: InfoAPI;
     exchange: ExchangeAPI;
@@ -11,6 +12,7 @@ export declare class Hyperliquid {
     ws: WebSocketClient;
     subscriptions: WebSocketSubscriptions;
     custom: CustomOperations;
+    mpcCustom: MpcCustomOperations | undefined;
     private rateLimiter;
     private symbolConversion;
     private isValidPrivateKey;

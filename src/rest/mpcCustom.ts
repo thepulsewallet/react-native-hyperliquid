@@ -1,9 +1,8 @@
 // src/rest/custom.ts
 
 import { InfoAPI } from './info';
-import { ExchangeAPI } from './exchange';
+import { MpcExchange } from './mpcExchange';
 import type {
-  OrderResponse,
   CancelOrderRequest,
   OrderRequest,
   OrderType,
@@ -11,20 +10,19 @@ import type {
   TriggerOrderTypeWire,
   Order,
 } from '../types';
-import type { CancelOrderResponse } from '../utils/signing';
 import { SymbolConversion } from '../utils/symbolConversion';
 
-export class CustomOperations {
-  private exchange: ExchangeAPI;
+export class MpcCustomOperations {
+  private exchange: MpcExchange;
   private infoApi: InfoAPI;
   private symbolConversion: SymbolConversion;
-  private walletAddress: string | null;
+  private walletAddress: string;
 
   constructor(
-    exchange: ExchangeAPI,
+    exchange: MpcExchange,
     infoApi: InfoAPI,
     symbolConversion: SymbolConversion,
-    walletAddress: string | null = null
+    walletAddress: string
   ) {
     this.exchange = exchange;
     this.infoApi = infoApi;
@@ -32,11 +30,11 @@ export class CustomOperations {
     this.walletAddress = walletAddress;
   }
 
-  async cancelAllOrders(symbol?: string): Promise<CancelOrderResponse> {
+  async cancelAllOrders(symbol?: string): Promise<any> {
     try {
-      const address = this.walletAddress || '';
-      const openOrders: UserOpenOrders =
-        await this.infoApi.getUserOpenOrders(address);
+      const openOrders: UserOpenOrders = await this.infoApi.getUserOpenOrders(
+        this.walletAddress
+      );
 
       let ordersToCancel: UserOpenOrders;
 
@@ -55,16 +53,13 @@ export class CustomOperations {
       if (ordersToCancel.length === 0) {
         throw new Error('No orders to cancel');
       }
-
       const cancelRequests: CancelOrderRequest[] = ordersToCancel.map(
         (order: any) => ({
           coin: order.coin,
           o: order.oid,
         })
       );
-
-      const response = await this.exchange.cancelOrder(cancelRequests);
-      return response;
+      return await this.exchange.cancelOrder(cancelRequests);
     } catch (error) {
       throw error;
     }
@@ -103,7 +98,7 @@ export class CustomOperations {
     px?: number,
     triggers?: TriggerOrderTypeWire[],
     slippage: number = this.DEFAULT_SLIPPAGE
-  ): Promise<OrderResponse> {
+  ): Promise<any> {
     const convertedSymbol = await this.symbolConversion.convertSymbol(symbol);
     const slippagePrice = await this.getSlippagePrice(
       convertedSymbol,
@@ -162,7 +157,7 @@ export class CustomOperations {
     px?: number,
     triggers?: TriggerOrderTypeWire[],
     slippage: number = this.DEFAULT_SLIPPAGE
-  ): Promise<OrderResponse> {
+  ): Promise<any> {
     const convertedSymbol = await this.symbolConversion.convertSymbol(symbol);
     const slippagePrice = await this.getSlippagePrice(
       convertedSymbol,
@@ -211,7 +206,7 @@ export class CustomOperations {
       orders: orders,
       grouping: triggers && triggers.length > 0 ? 'normalTpsl' : 'na',
     };
-    return this.exchange.getTxObjectPlaceOrder(orderRequest);
+    return this.exchange.placeOrder(orderRequest);
   }
 
   async makePositionTpSl(
@@ -220,7 +215,7 @@ export class CustomOperations {
     size: number,
     triggers?: TriggerOrderTypeWire[],
     slippage: number = this.DEFAULT_SLIPPAGE
-  ): Promise<OrderResponse> {
+  ): Promise<any> {
     const convertedSymbol = await this.symbolConversion.convertSymbol(symbol);
 
     const orders: Order[] = [];
@@ -259,11 +254,11 @@ export class CustomOperations {
     px?: number,
     slippage: number = this.DEFAULT_SLIPPAGE,
     cloid?: string
-  ): Promise<OrderResponse> {
+  ): Promise<any> {
     const convertedSymbol = await this.symbolConversion.convertSymbol(symbol);
-    const address = this.walletAddress || '';
-    const positions =
-      await this.infoApi.perpetuals.getClearinghouseState(address);
+    const positions = await this.infoApi.perpetuals.getClearinghouseState(
+      this.walletAddress
+    );
     for (const position of positions.assetPositions) {
       const item = position.position;
       if (convertedSymbol !== item.coin) {
@@ -290,12 +285,11 @@ export class CustomOperations {
         order_type: { limit: { tif: 'Ioc' } } as OrderType,
         reduce_only: true,
       };
-
       if (cloid) {
         orderRequest.cloid = cloid;
       }
 
-      return this.exchange.placeOrder(orderRequest);
+      return await this.exchange.placeOrder(orderRequest);
     }
 
     throw new Error(`No position found for ${convertedSymbol}`);
@@ -303,12 +297,12 @@ export class CustomOperations {
 
   async closeAllPositions(
     slippage: number = this.DEFAULT_SLIPPAGE
-  ): Promise<OrderResponse[]> {
+  ): Promise<any[]> {
     try {
-      const address = this.walletAddress || '';
-      const positions =
-        await this.infoApi.perpetuals.getClearinghouseState(address);
-      const closeOrders: Promise<OrderResponse>[] = [];
+      const positions = await this.infoApi.perpetuals.getClearinghouseState(
+        this.walletAddress
+      );
+      const closeOrders: Promise<any>[] = [];
 
       for (const position of positions.assetPositions) {
         const item = position.position;
@@ -317,13 +311,16 @@ export class CustomOperations {
             item.coin,
             'forward'
           );
-          closeOrders.push(
-            this.marketClose(symbol, undefined, undefined, slippage)
+          const closeOrder = await this.marketClose(
+            symbol,
+            undefined,
+            undefined,
+            slippage
           );
+          closeOrders.push(closeOrder);
         }
       }
-
-      return await Promise.all(closeOrders);
+      return closeOrders;
     } catch (error) {
       throw error;
     }
@@ -336,7 +333,7 @@ export class CustomOperations {
     px: number,
     triggers?: TriggerOrderTypeWire[],
     slippage: number = this.DEFAULT_SLIPPAGE
-  ): Promise<OrderResponse> {
+  ): Promise<any> {
     const convertedSymbol = await this.symbolConversion.convertSymbol(symbol);
     const orderType: OrderType = { limit: { tif: 'Gtc' } } as OrderType;
     const orders: Order[] = [
