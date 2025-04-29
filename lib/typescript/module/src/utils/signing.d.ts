@@ -1,13 +1,35 @@
 import { HDNodeWallet, type Wallet } from 'ethers';
 import type { OrderType, Signature, CancelOrderRequest, OrderWire, Grouping, Order, Builder } from '../types';
 export declare function orderTypeToWire(orderType: OrderType): OrderType;
-export declare function signL1Action(wallet: Wallet | HDNodeWallet, action: unknown, activePool: string | null, nonce: number, isMainnet: boolean): Promise<Signature>;
-export declare function signUserSignedAction(wallet: Wallet, action: any, payloadTypes: Array<{
+export declare function signL1Action(wallet: Wallet | HDNodeWallet | undefined, action: unknown, activePool: string | null, nonce: number, isMainnet: boolean): Promise<Signature>;
+export declare function getTxObject(action: unknown, activePool: string | null, nonce: number, isMainnet: boolean): Promise<{
+    domain: {
+        chainId: number;
+        name: string;
+        verifyingContract: string;
+        version: string;
+    };
+    types: {
+        readonly Agent: readonly [{
+            readonly name: "source";
+            readonly type: "string";
+        }, {
+            readonly name: "connectionId";
+            readonly type: "bytes32";
+        }];
+    };
+    primaryType: string;
+    message: {
+        source: string;
+        connectionId: string;
+    };
+}>;
+export declare function signUserSignedAction(wallet: Wallet | undefined, action: any, payloadTypes: Array<{
     name: string;
     type: string;
 }>, primaryType: string, isMainnet: boolean): Promise<Signature>;
-export declare function signUsdTransferAction(wallet: Wallet, action: any, isMainnet: boolean): Promise<Signature>;
-export declare function signWithdrawFromBridgeAction(wallet: Wallet, action: any, isMainnet: boolean): Promise<Signature>;
+export declare function signUsdTransferAction(wallet: Wallet | undefined, action: any, isMainnet: boolean): Promise<Signature>;
+export declare function signWithdrawFromBridgeAction(wallet: Wallet | undefined, action: any, isMainnet: boolean): Promise<Signature>;
 export declare function signAgent(wallet: Wallet, action: any, isMainnet: boolean): Promise<Signature>;
 export declare function floatToWire(x: number): string;
 export declare function floatToIntForHashing(x: number): number;

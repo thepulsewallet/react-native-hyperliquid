@@ -1,19 +1,16 @@
 import { RateLimiter } from '../utils/rateLimiter';
 import { InfoAPI } from './info';
-import { type CancelOrderResponse } from '../utils/signing';
 import type { CancelOrderRequest, Order, OrderRequest } from '../types/index';
 import { SymbolConversion } from '../utils/symbolConversion';
-export declare class ExchangeAPI {
-    private wallet;
+export declare class MpcExchange {
     private httpApi;
     private symbolConversion;
     private IS_MAINNET;
-    constructor(testnet: boolean, privateKey: string | null, _: InfoAPI, rateLimiter: RateLimiter, symbolConversion: SymbolConversion);
+    constructor(testnet: boolean, _: InfoAPI, rateLimiter: RateLimiter, symbolConversion: SymbolConversion);
     private getAssetIndex;
     placeOrder(orderRequest: OrderRequest): Promise<any>;
-    getTxObjectPlaceOrder(orderRequest: OrderRequest): Promise<any>;
     placeOrdersTpSl(orderRequest: OrderRequest): Promise<any>;
-    cancelOrder(cancelRequests: CancelOrderRequest | CancelOrderRequest[]): Promise<CancelOrderResponse>;
+    cancelOrder(cancelRequests: CancelOrderRequest | CancelOrderRequest[]): Promise<any>;
     cancelOrderByCloid(symbol: string, cloid: string): Promise<any>;
     modifyOrder(oid: number, orderRequest: Order): Promise<any>;
     batchModifyOrders(modifies: Array<{
@@ -31,4 +28,4 @@ export declare class ExchangeAPI {
     setReferrer(code: string): Promise<any>;
     callRequest(payload: object, weight: number): Promise<any>;
 }
-//# sourceMappingURL=exchange.d.ts.map
+//# sourceMappingURL=mpcExchange.d.ts.map

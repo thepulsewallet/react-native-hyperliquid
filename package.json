@@ -56,9 +56,6 @@
     "url": "https://github.com/Sotatek-ElvisPhuong/react-native-hyperliquid/issues"
   },
   "homepage": "https://github.com/Sotatek-ElvisPhuong/react-native-hyperliquid#readme",
-  "publishConfig": {
-    "registry": "https://registry.npmjs.org/"
-  },
   "dependencies": {
     "@msgpack/msgpack": "^3.0.0-beta2",
     "@types/ws": "^8.5.11",
@@ -174,5 +171,8 @@
   "create-react-native-library": {
     "type": "library",
     "version": "0.42.2"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
   }
 }

@@ -8,9 +8,10 @@ export declare class ExchangeAPI {
     private httpApi;
     private symbolConversion;
     private IS_MAINNET;
-    constructor(testnet: boolean, privateKey: string, _: InfoAPI, rateLimiter: RateLimiter, symbolConversion: SymbolConversion);
+    constructor(testnet: boolean, privateKey: string | null, _: InfoAPI, rateLimiter: RateLimiter, symbolConversion: SymbolConversion);
     private getAssetIndex;
     placeOrder(orderRequest: OrderRequest): Promise<any>;
+    getTxObjectPlaceOrder(orderRequest: OrderRequest): Promise<any>;
     placeOrdersTpSl(orderRequest: OrderRequest): Promise<any>;
     cancelOrder(cancelRequests: CancelOrderRequest | CancelOrderRequest[]): Promise<CancelOrderResponse>;
     cancelOrderByCloid(symbol: string, cloid: string): Promise<any>;
@@ -28,5 +29,6 @@ export declare class ExchangeAPI {
     scheduleCancel(time: number | null): Promise<any>;
     vaultTransfer(vaultAddress: string, isDeposit: boolean, usd: number): Promise<any>;
     setReferrer(code: string): Promise<any>;
+    callRequest(payload: object, weight: number): Promise<any>;
 }
 //# sourceMappingURL=exchange.d.ts.map

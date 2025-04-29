@@ -1,7 +1,5 @@
-import { HDNodeWallet, type Wallet } from 'ethers';
-import type { OrderType, Signature, CancelOrderRequest, OrderWire, Grouping, Order, Builder } from '../types';
+import type { OrderType, CancelOrderRequest, OrderWire, Grouping, Order, Builder, ITypeData } from '../types';
 export declare function orderTypeToWire(orderType: OrderType): OrderType;
-export declare function signL1Action(wallet: Wallet | HDNodeWallet | undefined, action: unknown, activePool: string | null, nonce: number, isMainnet: boolean): Promise<Signature>;
 export declare function getTxObject(action: unknown, activePool: string | null, nonce: number, isMainnet: boolean): Promise<{
     domain: {
         chainId: number;
@@ -24,13 +22,13 @@ export declare function getTxObject(action: unknown, activePool: string | null, 
         connectionId: string;
     };
 }>;
-export declare function signUserSignedAction(wallet: Wallet | undefined, action: any, payloadTypes: Array<{
+export declare function signUserSignedAction(action: any, payloadTypes: Array<{
     name: string;
     type: string;
-}>, primaryType: string, isMainnet: boolean): Promise<Signature>;
-export declare function signUsdTransferAction(wallet: Wallet | undefined, action: any, isMainnet: boolean): Promise<Signature>;
-export declare function signWithdrawFromBridgeAction(wallet: Wallet | undefined, action: any, isMainnet: boolean): Promise<Signature>;
-export declare function signAgent(wallet: Wallet, action: any, isMainnet: boolean): Promise<Signature>;
+}>, primaryType: string, isMainnet: boolean): Promise<ITypeData>;
+export declare function signUsdTransferAction(action: any, isMainnet: boolean): Promise<ITypeData>;
+export declare function signWithdrawFromBridgeAction(action: any, isMainnet: boolean): Promise<ITypeData>;
+export declare function signAgent(action: any, isMainnet: boolean): Promise<ITypeData>;
 export declare function floatToWire(x: number): string;
 export declare function floatToIntForHashing(x: number): number;
 export declare function floatToUsdInt(x: number): number;
@@ -47,4 +45,4 @@ export interface CancelOrderResponse {
 }
 export declare function cancelOrderToAction(cancelRequest: CancelOrderRequest): any;
 export declare function orderWiresToOrderAction(orderWires: OrderWire[], grouping: Grouping, builder?: Builder): any;
-//# sourceMappingURL=signing.d.ts.map
+//# sourceMappingURL=mpcSigning.d.ts.map
